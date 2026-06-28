@@ -29,6 +29,15 @@
 
 - (void)attachToSession:(AVCaptureSession *)session {
     if (!session) return;
+    
+    // Safety check 1: Don't add if one already exists
+    for (AVCaptureOutput *output in session.outputs) {
+        if ([output isKindOfClass:[AVCaptureDepthDataOutput class]]) {
+            NSLog(@"[CinematicX] Session already has a depth output, skipping attachment.");
+            return;
+        }
+    }
+
     [session beginConfiguration];
     self.depthOutput = [[AVCaptureDepthDataOutput alloc] init];
     self.depthOutput.filteringEnabled = YES;
@@ -64,6 +73,20 @@
 - (void)startRunning {
     %orig;
     [[CXDepthEngine sharedEngine] attachToSession:self];
+}
+
+- (void)addOutput:(AVCaptureOutput *)output {
+    // Safety check 2: If the Camera app tries to add its own depth output (like in Portrait mode),
+    // we MUST remove ours first to prevent a multiple-depth-outputs crash.
+    if ([output isKindOfClass:[AVCaptureDepthDataOutput class]]) {
+        CXDepthEngine *engine = [CXDepthEngine sharedEngine];
+        if (engine.depthOutput && output != engine.depthOutput) {
+            NSLog(@"[CinematicX] Camera app is adding its own depth output. Removing ours to prevent crash.");
+            [self removeOutput:engine.depthOutput];
+            engine.depthOutput = nil;
+        }
+    }
+    %orig;
 }
 %end
 
