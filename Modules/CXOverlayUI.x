@@ -214,11 +214,10 @@ AVCaptureDevice *gActiveDevice = nil;
 
 @end
 
-// Dummy interfaces to make the compiler happy if Headers aren't fully resolved.
-@interface PLCameraView : UIView
+@interface CAMViewfinderView : UIView
 @end
 
-%hook PLCameraView
+%hook CAMViewfinderView
 - (void)didMoveToWindow {
     %orig;
     static CXOverlayView *overlay;
