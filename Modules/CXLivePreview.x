@@ -31,10 +31,9 @@ extern CGFloat gBlurIntensity;
 @property (nonatomic, strong) CIContext *ciContext;
 @property (nonatomic, strong) id<MTLCommandQueue> commandQueue;
 @property (nonatomic, strong) AVCaptureSession *weakSession;
-@property (nonatomic, strong) AVCaptureVideoDataOutput *videoOutput;
+@property (nonatomic, strong) AVCaptureAudioDataOutput *audioOutput;
 + (instancetype)sharedView;
 - (void)attachToSession:(AVCaptureSession *)session;
-- (void)hideNativePreview:(UIView *)camPreviewView;
 @end
 
 @implementation CXLivePreviewView
@@ -51,7 +50,7 @@ extern CGFloat gBlurIntensity;
 - (instancetype)initWithFrame:(CGRect)frame {
     self = [super initWithFrame:frame];
     if (self) {
-        self.userInteractionEnabled = NO; // Let touches pass through
+        self.userInteractionEnabled = NO;
         self.backgroundColor = [UIColor clearColor];
         
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
@@ -72,25 +71,40 @@ extern CGFloat gBlurIntensity;
     if (self.weakSession == session) return;
     self.weakSession = session;
     
-    // Create and add our data output to grab frames
+    dispatch_queue_t queue = dispatch_queue_create("com.cinematicx.preview", NULL);
+    
+    // Video Output
     self.videoOutput = [[AVCaptureVideoDataOutput alloc] init];
     self.videoOutput.alwaysDiscardsLateVideoFrames = YES;
     self.videoOutput.videoSettings = @{(id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_32BGRA)};
-    
-    dispatch_queue_t queue = dispatch_queue_create("com.cinematicx.preview", NULL);
     [self.videoOutput setSampleBufferDelegate:self queue:queue];
     
     if ([session canAddOutput:self.videoOutput]) {
         [session addOutput:self.videoOutput];
-        NSLog(@"[CinematicX] Attached live preview data output to session");
     }
-}
-
-- (void)hideNativePreview:(UIView *)camPreviewView {
-    // We will place ourselves on top, and if cinematic is on, we show our metal view
+    
+    // Audio Output
+    self.audioOutput = [[AVCaptureAudioDataOutput alloc] init];
+    [self.audioOutput setSampleBufferDelegate:self queue:queue];
+    
+    if ([session canAddOutput:self.audioOutput]) {
+        [session addOutput:self.audioOutput];
+    }
+    
+    NSLog(@"[CinematicX] Attached live preview data output and audio output to session");
 }
 
 - (void)captureOutput:(AVCaptureOutput *)output didOutputSampleBuffer:(CMSampleBufferRef)sampleBuffer fromConnection:(AVCaptureConnection *)connection {
+    
+    // Handle Audio
+    if (output == self.audioOutput) {
+        if (gCinematicEnabled) {
+            [[NSClassFromString(@"CXVideoRecorder") sharedRecorder] appendAudioSampleBuffer:sampleBuffer];
+        }
+        return;
+    }
+    
+    // Handle Video
     if (!gCinematicEnabled) {
         dispatch_async(dispatch_get_main_queue(), ^{
             self.metalView.hidden = YES;
@@ -101,12 +115,9 @@ extern CGFloat gBlurIntensity;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (!imageBuffer) return;
     
-    // Feed the frame to the edge detector to generate the segmentation mask!
     [[NSClassFromString(@"CXEdgeDetector") sharedDetector] submitFrame:imageBuffer];
     
     CIImage *sourceImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
-    
-    // Apply blur using the existing logic
     CIImage *mask = [[NSClassFromString(@"CXEdgeDetector") sharedDetector] latestMaskImage];
     CIImage *depth = [[NSClassFromString(@"CXDepthEngine") sharedEngine] latestDepthImage];
     
@@ -118,8 +129,30 @@ extern CGFloat gBlurIntensity;
         }
     }
     
-    // Correct orientation for preview (usually 90 degrees rotated depending on connection)
-    // Assume portrait for now
+    // Pipe the blurred frame to the Video Recorder
+    CMTime timestamp = CMSampleBufferGetPresentationTimeStamp(sampleBuffer);
+    
+    // Create a new CVPixelBuffer to hold the blurred image for the recorder
+    CVPixelBufferRef renderBuffer = NULL;
+    NSDictionary *options = @{
+        (id)kCVPixelBufferIOSurfacePropertiesKey: @{}
+    };
+    CVPixelBufferCreate(kCFAllocatorDefault, 1920, 1080, kCVPixelFormatType_32BGRA, (__bridge CFDictionaryRef)options, &renderBuffer);
+    
+    if (renderBuffer) {
+        // We need to render the blurred CIImage into a buffer.
+        // It should match 1080p for the asset writer.
+        CGFloat scaleX = 1920.0 / resultImage.extent.size.width;
+        CGFloat scaleY = 1080.0 / resultImage.extent.size.height;
+        CGFloat renderScale = MAX(scaleX, scaleY);
+        CIImage *scaledForRender = [resultImage imageByApplyingTransform:CGAffineTransformMakeScale(renderScale, renderScale)];
+        
+        [self.ciContext render:scaledForRender toCVPixelBuffer:renderBuffer];
+        [[NSClassFromString(@"CXVideoRecorder") sharedRecorder] appendVideoPixelBuffer:renderBuffer withPresentationTime:timestamp];
+        CVPixelBufferRelease(renderBuffer);
+    }
+    
+    // Draw to Live Preview MTKView
     resultImage = [resultImage imageByApplyingTransform:CGAffineTransformMakeRotation(-M_PI_2)];
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -127,13 +160,10 @@ extern CGFloat gBlurIntensity;
         id<CAMetalDrawable> drawable = [self.metalView currentDrawable];
         if (drawable) {
             id<MTLCommandBuffer> commandBuffer = [self.commandQueue commandBuffer];
-            
-            // Scale to fit
             CGFloat scaleX = self.metalView.drawableSize.width / resultImage.extent.size.width;
             CGFloat scaleY = self.metalView.drawableSize.height / resultImage.extent.size.height;
             CGFloat scale = MAX(scaleX, scaleY);
             CIImage *scaledImage = [resultImage imageByApplyingTransform:CGAffineTransformMakeScale(scale, scale)];
-            
             [self.ciContext render:scaledImage toMTLTexture:drawable.texture commandBuffer:commandBuffer bounds:scaledImage.extent colorSpace:CGColorSpaceCreateDeviceRGB()];
             [commandBuffer presentDrawable:drawable];
             [commandBuffer commit];
@@ -153,7 +183,6 @@ extern CGFloat gBlurIntensity;
 // Hook CAMViewfinderView to place our preview view
 @interface CAMViewfinderView : UIView
 @end
-
 %hook CAMViewfinderView
 - (void)didMoveToWindow {
     %orig;
@@ -163,6 +192,26 @@ extern CGFloat gBlurIntensity;
         preview.frame = self.bounds;
         [self addSubview:preview];
         [self bringSubviewToFront:preview];
+    }
+}
+%end
+
+// Hijack AVCaptureMovieFileOutput
+%hook AVCaptureMovieFileOutput
+- (void)startRecordingToOutputFileURL:(NSURL *)outputFileURL recordingDelegate:(id<AVCaptureFileOutputRecordingDelegate>)delegate {
+    if (gCinematicEnabled) {
+        NSLog(@"[CinematicX] Hijacking native record start!");
+        [[NSClassFromString(@"CXVideoRecorder") sharedRecorder] startRecordingToURL:outputFileURL delegate:delegate];
+    } else {
+        %orig;
+    }
+}
+- (void)stopRecording {
+    if (gCinematicEnabled) {
+        NSLog(@"[CinematicX] Hijacking native record stop!");
+        [[NSClassFromString(@"CXVideoRecorder") sharedRecorder] stopRecording];
+    } else {
+        %orig;
     }
 }
 %end

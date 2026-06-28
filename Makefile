@@ -18,10 +18,11 @@ CinematicX_FILES = Tweak.x \
                    Modules/CXSubjectTracker.x \
                    Modules/CXRackFocus.x \
                    Modules/CXNativeUI.x \
-                   Modules/CXLivePreview.x
+                   Modules/CXLivePreview.x \
+                   Modules/CXVideoRecorder.m
 
 CinematicX_CFLAGS = -fobjc-arc -O2 -Wall -arch arm64
-CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo
+CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo Photos
 # NOTE: CoreCamera is NOT linked. PLCameraController/PLCameraView are hooked at runtime by
 # Logos/ElleKit, so no link-time private framework is needed — and the CI SDK has no
 # CoreCamera stub to link against (ld: framework 'CoreCamera' not found).
