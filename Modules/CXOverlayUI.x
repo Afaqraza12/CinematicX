@@ -69,7 +69,10 @@ CGFloat gBlurIntensity = 0.7f;
     [self.cineBtn setTitleColor:CXWhite() forState:UIControlStateNormal];
     self.cineBtn.backgroundColor = CXBG();
     self.cineBtn.layer.cornerRadius = 12;
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
     self.cineBtn.contentEdgeInsets = UIEdgeInsetsMake(6, 10, 6, 10);
+#pragma clang diagnostic pop
     [self.cineBtn addTarget:self action:@selector(toggleCine)
           forControlEvents:UIControlEventTouchUpInside];
     [self addSubview:self.cineBtn];
