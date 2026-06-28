@@ -1,5 +1,6 @@
 #import <AVFoundation/AVFoundation.h>
 #import <CoreImage/CoreImage.h>
+#import "Headers/PLCameraController.h"
 
 // --- Interface Declarations to satisfy compiler ---
 @interface CXDepthEngine : NSObject
