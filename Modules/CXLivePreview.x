@@ -101,6 +101,9 @@ extern CGFloat gBlurIntensity;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer);
     if (!imageBuffer) return;
     
+    // Feed the frame to the edge detector to generate the segmentation mask!
+    [[NSClassFromString(@"CXEdgeDetector") sharedDetector] submitFrame:imageBuffer];
+    
     CIImage *sourceImage = [CIImage imageWithCVPixelBuffer:imageBuffer];
     
     // Apply blur using the existing logic
