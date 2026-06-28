@@ -14,6 +14,4 @@
 - (void)stopVideoCapture;
 @end
 
-@interface PLCameraView : UIView
-@property (nonatomic, strong) PLCameraController *cameraController;
-@end
+#import "PLCameraView.h"

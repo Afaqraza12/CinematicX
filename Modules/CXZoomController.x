@@ -63,6 +63,7 @@ static const CGFloat kMaxZoom = 6.0f;
 
 %hook PLCameraController
 - (void)setVideoZoomFactor:(CGFloat)factor {
+    %orig; // keep PLCameraController's own zoom state in sync (was previously dropped)
     AVCaptureDevice *dev = [self valueForKey:@"_videoCaptureDevice"];
     [[CXZoomController sharedController] setZoom:factor onDevice:dev animated:YES];
 }

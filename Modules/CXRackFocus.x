@@ -5,6 +5,7 @@ static const NSTimeInterval kRackMin = 0.4;
 static const NSTimeInterval kRackMax = 0.8;
 static const CGFloat kBreathAmp = 0.015f;
 static const NSTimeInterval kBreathPeriod = 2.0;
+static const NSTimeInterval kBreathTick = 0.1;   // 10 Hz — smooth enough, 1/2 the lock churn
 static const CGFloat kRackTriggerDelta = 0.12f;
 
 @interface CXRackFocus : NSObject
@@ -13,6 +14,7 @@ static const CGFloat kRackTriggerDelta = 0.12f;
 @property (nonatomic, assign) BOOL racking;
 @property (nonatomic, strong) NSTimer *breathTimer;
 @property (nonatomic, assign) CGFloat breathPhase;
+@property (nonatomic, assign) CGFloat baseZoom;   // zoom to oscillate around while breathing
 + (instancetype)sharedRackFocus;
 - (void)setDevice:(AVCaptureDevice *)device;
 - (void)evaluateRack:(CGRect)oldBox newBox:(CGRect)newBox;
@@ -89,8 +91,12 @@ static const CGFloat kRackTriggerDelta = 0.12f;
 
 - (void)startBreathing {
     self.breathPhase = 0;
+    // Snapshot the current zoom ONCE as the oscillation center. The breathing offset is
+    // always applied relative to this fixed base, so it can never accumulate / drift.
+    AVCaptureDevice *dev = self.device;
+    self.baseZoom = dev ? MAX(1.0, dev.videoZoomFactor) : 1.0;
     dispatch_async(dispatch_get_main_queue(), ^{
-        self.breathTimer = [NSTimer scheduledTimerWithTimeInterval:0.05
+        self.breathTimer = [NSTimer scheduledTimerWithTimeInterval:kBreathTick
                                                             target:self
                                                           selector:@selector(breathTick)
                                                           userInfo:nil
@@ -106,11 +112,12 @@ static const CGFloat kRackTriggerDelta = 0.12f;
 - (void)breathTick {
     AVCaptureDevice *dev = self.device;
     if (!dev || self.racking) return;
-    self.breathPhase += (0.05 / kBreathPeriod) * 2 * M_PI;
-    CGFloat offset = sin(self.breathPhase) * kBreathAmp;
+    self.breathPhase += (kBreathTick / kBreathPeriod) * 2 * M_PI;
+    // Absolute target around the captured base — NOT additive on the live zoom.
+    CGFloat target = MAX(1.0, self.baseZoom + sin(self.breathPhase) * kBreathAmp);
     NSError *e;
     if ([dev lockForConfiguration:&e]) {
-        dev.videoZoomFactor = MAX(1.0, dev.videoZoomFactor + offset);
+        dev.videoZoomFactor = target;
         [dev unlockForConfiguration];
     }
 }

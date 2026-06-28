@@ -37,23 +37,37 @@ static const NSInteger kResegInterval = 15;
 - (void)processFrame:(CMSampleBufferRef)buf
           completion:(void(^)(CGRect, BOOL))cb {
     self.frameCount++;
-    if (self.frameCount % kResegInterval == 0 || !self.tracking) {
-        if (cb) cb(self.lastBox, YES);
+    BOOL periodicReseg = (self.frameCount % kResegInterval == 0);
+
+    // (Re)acquire a subject when we have nothing to track, or on the periodic refresh.
+    // This is the bootstrap the tracker was missing — without it, VNTrackObjectRequest
+    // never had a seed observation, so tracking never engaged and no box was ever produced.
+    if (!self.tracking || !self.currentObs || periodicReseg) {
+        VNDetectedObjectObservation *detected = [self detectSubjectIn:buf];
+        if (detected) {
+            self.currentObs = detected;
+            self.lastBox = detected.boundingBox;
+            self.tracking = YES;
+            if (cb) cb(detected.boundingBox, YES); // new subject → mask needs a full reseg
+        } else {
+            self.tracking = NO;
+            if (cb) cb(CGRectZero, YES);
+        }
         return;
     }
-    if (!self.currentObs) { if (cb) cb(CGRectZero, YES); return; }
 
+    // Cheap frame-to-frame tracking now that we have a seed observation.
     VNTrackObjectRequest *req =
         [[VNTrackObjectRequest alloc] initWithDetectedObjectObservation:self.currentObs];
     req.trackingLevel = VNRequestTrackingLevelAccurate;
 
     NSError *err;
     [self.handler performRequests:@[req] onCMSampleBuffer:buf error:&err];
-    if (err) { if (cb) cb(self.lastBox, YES); return; }
+    if (err) { self.tracking = NO; if (cb) cb(self.lastBox, YES); return; }
 
     VNDetectedObjectObservation *res = req.results.firstObject;
     if (!res || res.confidence < kMinConfidence) {
-        self.tracking = NO;
+        self.tracking = NO;          // lost the subject → next frame re-detects
         if (cb) cb(self.lastBox, YES);
         return;
     }
@@ -61,6 +75,29 @@ static const NSInteger kResegInterval = 15;
     self.currentObs = res;
     self.lastBox = res.boundingBox;
     if (cb) cb(res.boundingBox, NO);
+}
+
+// One-shot person detection used to seed/refresh the tracker. Picks the largest
+// detected person so we lock onto the dominant subject in frame.
+- (VNDetectedObjectObservation *)detectSubjectIn:(CMSampleBufferRef)buf {
+    CVImageBufferRef img = CMSampleBufferGetImageBuffer(buf);
+    if (!img) return nil;
+
+    VNDetectHumanRectanglesRequest *req = [[VNDetectHumanRectanglesRequest alloc] init];
+    VNImageRequestHandler *handler =
+        [[VNImageRequestHandler alloc] initWithCVPixelBuffer:img options:@{}];
+
+    NSError *err;
+    [handler performRequests:@[req] error:&err];
+    if (err) return nil;
+
+    VNDetectedObjectObservation *best = nil;
+    CGFloat bestArea = 0;
+    for (VNDetectedObjectObservation *o in req.results) {
+        CGFloat area = o.boundingBox.size.width * o.boundingBox.size.height;
+        if (area > bestArea) { bestArea = area; best = o; }
+    }
+    return best;
 }
 
 - (void)resetWith:(VNDetectedObjectObservation *)obs {

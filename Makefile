@@ -1,4 +1,4 @@
-# Target: iPhone X arm64, iOS 16.7.6, Dopamine rootless
+# Target: iPhone X arm64, iOS 16.7.6, Dopamine rootless. Minimum supported OS: iOS 15.0.
 TARGET := iphone:clang:16.5:15.0
 ARCHS = arm64
 INSTALL_TARGET_PROCESSES = SpringBoard
@@ -21,5 +21,10 @@ CinematicX_FILES = Tweak.x \
 
 CinematicX_CFLAGS = -fobjc-arc -O2 -Wall -arch arm64
 CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo
+CinematicX_PRIVATE_FRAMEWORKS = CoreCamera
 
 include $(THEOS)/makefiles/tweak.mk
+
+# Build the Settings preference bundle alongside the tweak so a single .deb ships both.
+SUBPROJECTS += Preferences
+include $(THEOS)/makefiles/aggregate.mk

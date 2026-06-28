@@ -13,14 +13,24 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Setup Theos
-      uses: Randomblock1/theos-action@v1
-      with:
-        theos-sdks: 'https://github.com/theos/sdks'
-        theos-sdks-branch: 'master'
-
-    - name: Build Tweak (arm64 rootless)
+    - name: Install Theos
       run: |
+        export THEOS=~/theos
+        echo "THEOS=$HOME/theos" >> $GITHUB_ENV
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+
+    - name: Pin iOS 16.5 SDK
+      run: |
+        # Pin the exact SDK the project targets (TARGET := iphone:clang:16.5:15.0)
+        # so the build is reproducible regardless of what theos/sdks ships on master.
+        mkdir -p "$THEOS/sdks"
+        curl -L "https://github.com/theos/sdks/releases/download/master/iPhoneOS16.5.sdk.tar.xz" \
+          | tar -xJ -C "$THEOS/sdks"
+        test -d "$THEOS/sdks/iPhoneOS16.5.sdk" || (echo "16.5 SDK missing" && exit 1)
+
+    - name: Build Tweak + Prefs (arm64 rootless)
+      run: |
+        export PATH=$THEOS/bin:$PATH
         make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
 
     - name: Upload .deb

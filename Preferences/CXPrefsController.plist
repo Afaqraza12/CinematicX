@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>title</key>
+	<string>CinematicX</string>
+	<key>items</key>
+	<array>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Cinematic Engine</string>
+			<key>footerText</key>
+			<string>Master switch for the CinematicX tweak. Toggling this requires a respring to take effect inside the Camera app.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSSwitchCell</string>
+			<key>label</key>
+			<string>Enabled</string>
+			<key>key</key>
+			<string>enabled</string>
+			<key>default</key>
+			<true/>
+			<key>defaults</key>
+			<string>com.afaq.cinematicx</string>
+			<key>PostNotification</key>
+			<string>com.afaq.cinematicx/prefsChanged</string>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Apply Changes</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Respring SpringBoard</string>
+			<key>action</key>
+			<string>respring</string>
+			<key>isDestructive</key>
+			<true/>
+		</dict>
+
+		<dict>
+			<key>cell</key>
+			<string>PSGroupCell</string>
+			<key>label</key>
+			<string>Credits</string>
+			<key>footerText</key>
+			<string>CinematicX — Professional cinematic mode for iPhone X.\nDesigned &amp; developed by Afaq Raza.\n\nReal optical zoom · Depth-aware bokeh · Subject tracking · Rack focus.\n\nMade with care for the jailbreak community. © 2026 Afaq Raza.</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSButtonCell</string>
+			<key>label</key>
+			<string>Developer — Afaq Raza</string>
+			<key>action</key>
+			<string>openGitHub</string>
+		</dict>
+		<dict>
+			<key>cell</key>
+			<string>PSStaticTextCell</string>
+			<key>label</key>
+			<string>Version</string>
+			<key>detail</key>
+			<string>1.0.0</string>
+			<key>enabled</key>
+			<false/>
+		</dict>
+
+	</array>
+</dict>
+</plist>

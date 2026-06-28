@@ -1,4 +1,5 @@
 #import <UIKit/UIKit.h>
+#import <AVFoundation/AVFoundation.h>
 
 // Forward declare CXZoomController to avoid circular imports if needed, or simply use NSClassFromString
 @interface CXZoomController : NSObject
@@ -13,6 +14,10 @@ static UIColor *CXWhite()  { return [UIColor colorWithWhite:1.0 alpha:0.9]; }
 // Global cinematic state — checked by frame pipeline
 BOOL gCinematicEnabled = NO;
 CGFloat gBlurIntensity = 0.7f;
+
+// Active capture device, published by the Tweak.x pipeline each frame so the overlay's
+// zoom pills can drive real zoom (fixes the "onDevice:nil does nothing" bug).
+AVCaptureDevice *gActiveDevice = nil;
 
 @interface CXOverlayView : UIView
 @property (nonatomic, strong) UIButton *btn1x, *btn2x, *btn3x;
@@ -35,6 +40,15 @@ CGFloat gBlurIntensity = 0.7f;
         [self buildUI];
     }
     return self;
+}
+
+// Pass-through hit testing: the overlay spans the whole preview, but only OUR controls
+// should capture touches. Empty areas fall through to the Camera app underneath so the
+// native shutter, mode switcher and pinch-to-zoom keep working (fixes touch-blocking).
+- (UIView *)hitTest:(CGPoint)point withEvent:(UIEvent *)event {
+    UIView *hit = [super hitTest:point withEvent:event];
+    if (hit == self) return nil;
+    return hit;
 }
 
 - (void)buildUI {
@@ -124,7 +138,8 @@ CGFloat gBlurIntensity = 0.7f;
 
 - (void)zoomTap:(UIButton *)b {
     CGFloat z = b.tag / 10.0;
-    [[NSClassFromString(@"CXZoomController") sharedController] setZoom:z onDevice:nil animated:YES];
+    // Drive the REAL active device (published by the pipeline), not nil.
+    [[NSClassFromString(@"CXZoomController") sharedController] setZoom:z onDevice:gActiveDevice animated:YES];
     [self setZoomActive:z];
     [self resetHide];
 }
@@ -132,8 +147,17 @@ CGFloat gBlurIntensity = 0.7f;
 - (void)toggleCine {
     gCinematicEnabled = !gCinematicEnabled;
     self.blurSlider.hidden = !gCinematicEnabled;
-    UIColor *c = gCinematicEnabled ? CXYellow() : CXWhite();
-    [self.cineBtn setTitleColor:c forState:UIControlStateNormal];
+
+    // The CINE button is the dedicated Cinematic-mode entry. Make its state obvious:
+    // filled yellow when ON, translucent when OFF. Cinematic features (depth bokeh,
+    // tracking, rack focus) only run while this is ON — never in plain video mode.
+    if (gCinematicEnabled) {
+        self.cineBtn.backgroundColor = CXYellow();
+        [self.cineBtn setTitleColor:[UIColor blackColor] forState:UIControlStateNormal];
+    } else {
+        self.cineBtn.backgroundColor = CXBG();
+        [self.cineBtn setTitleColor:CXWhite() forState:UIControlStateNormal];
+    }
     NSLog(@"[CinematicX] Cinematic: %@", gCinematicEnabled ? @"ON" : @"OFF");
     [self resetHide];
 }
