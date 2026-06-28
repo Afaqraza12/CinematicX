@@ -18,9 +18,9 @@ jobs:
         export THEOS=~/theos
         bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
 
-    - name: Download iOS 16.5 SDK
+    - name: Download iOS SDKs
       run: |
-        curl -L "https://github.com/theos/sdks/releases/download/latest/iPhoneOS16.5.sdk.tar.xz" | tar -xJ -C ~/theos/sdks
+        git clone https://github.com/theos/sdks.git ~/theos/sdks
 
     - name: Build Tweak
       run: |
