@@ -21,6 +21,5 @@ CinematicX_FILES = Tweak.x \
 
 CinematicX_CFLAGS = -fobjc-arc -O2 -Wall -arch arm64
 CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo
-CinematicX_PRIVATE_FRAMEWORKS = CoreCamera
 
 include $(THEOS)/makefiles/tweak.mk
