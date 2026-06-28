@@ -6,6 +6,8 @@
 extern BOOL gCinematicEnabled;
 extern CGFloat gBlurIntensity;
 
+#import "CXVideoRecorder.h"
+
 // Forward declare to access the custom renderer from Tweak.x
 @interface CXBokehRenderer : NSObject
 + (instancetype)sharedRenderer;
@@ -18,6 +20,7 @@ extern CGFloat gBlurIntensity;
 
 @interface CXEdgeDetector : NSObject
 + (instancetype)sharedDetector;
+- (void)submitFrame:(CVPixelBufferRef)pixelBuffer;
 - (CIImage *)latestMaskImage;
 @end
 
@@ -26,11 +29,12 @@ extern CGFloat gBlurIntensity;
 - (CIImage *)latestDepthImage;
 @end
 
-@interface CXLivePreviewView : UIView <AVCaptureVideoDataOutputSampleBufferDelegate>
+@interface CXLivePreviewView : UIView <AVCaptureVideoDataOutputSampleBufferDelegate, AVCaptureAudioDataOutputSampleBufferDelegate>
 @property (nonatomic, strong) MTKView *metalView;
 @property (nonatomic, strong) CIContext *ciContext;
 @property (nonatomic, strong) id<MTLCommandQueue> commandQueue;
 @property (nonatomic, strong) AVCaptureSession *weakSession;
+@property (nonatomic, strong) AVCaptureVideoDataOutput *videoOutput;
 @property (nonatomic, strong) AVCaptureAudioDataOutput *audioOutput;
 + (instancetype)sharedView;
 - (void)attachToSession:(AVCaptureSession *)session;
