@@ -1,6 +1,9 @@
 #import <Preferences/PSListController.h>
 #import <Preferences/PSSpecifier.h>
 #import <UIKit/UIKit.h>
+#import <spawn.h>
+
+extern char **environ;
 
 @interface CXPrefsController : PSListController
 @end
@@ -15,31 +18,37 @@
 }
 
 // Respring button — restarts SpringBoard so the Camera-app hooks pick up the new state.
+// Uses posix_spawn (NSTask is not available in the public iOS SDK).
 - (void)respring {
     // Prefer the rootless sbreload/ldrestart path; fall back to killing backboardd.
-    NSArray<NSString *> *candidates = @[
-        @"/var/jb/usr/bin/sbreload",
-        @"/var/jb/usr/bin/ldrestart",
-        @"/usr/bin/sbreload"
-    ];
-    for (NSString *path in candidates) {
-        if ([[NSFileManager defaultManager] isExecutableFileAtPath:path]) {
-            [self runProcess:path];
-            return;
-        }
-    }
-    // Last resort: ask the system to relaunch the frontboard scene session.
-    [self runProcess:@"/var/jb/usr/bin/killall"]; // killall backboardd handled in helper
+    if ([self spawn:@"/var/jb/usr/bin/sbreload" args:@[@"sbreload"]]) return;
+    if ([self spawn:@"/var/jb/usr/bin/ldrestart" args:@[@"ldrestart"]]) return;
+    if ([self spawn:@"/usr/bin/sbreload" args:@[@"sbreload"]]) return;
+    // Last resort: kill backboardd to force a frontboard relaunch.
+    [self spawn:@"/var/jb/usr/bin/killall" args:@[@"killall", @"-9", @"backboardd"]];
 }
 
-- (void)runProcess:(NSString *)launchPath {
-    NSTask *task = [[NSTask alloc] init];
-    task.launchPath = launchPath;
-    if ([launchPath hasSuffix:@"killall"]) {
-        task.arguments = @[@"-9", @"backboardd"];
+// Returns YES if the executable exists and was spawned.
+- (BOOL)spawn:(NSString *)path args:(NSArray<NSString *> *)args {
+    if (![[NSFileManager defaultManager] isExecutableFileAtPath:path]) return NO;
+
+    NSUInteger count = args.count;
+    char **argv = (char **)malloc(sizeof(char *) * (count + 1));
+    for (NSUInteger i = 0; i < count; i++)
+        argv[i] = strdup([args[i] UTF8String]);
+    argv[count] = NULL;
+
+    pid_t pid;
+    int status = posix_spawn(&pid, [path fileSystemRepresentation], NULL, NULL, argv, environ);
+
+    for (NSUInteger i = 0; i < count; i++) free(argv[i]);
+    free(argv);
+
+    if (status != 0) {
+        NSLog(@"[CinematicX] Respring spawn failed (%d) via %@", status, path);
+        return NO;
     }
-    @try { [task launch]; }
-    @catch (NSException *e) { NSLog(@"[CinematicX] Respring failed via %@: %@", launchPath, e); }
+    return YES;
 }
 
 - (void)openGitHub {
