@@ -1,4 +1,5 @@
 #import <AVFoundation/AVFoundation.h>
+#import <UIKit/UIKit.h>
 
 @interface PLCameraController : NSObject
 @property (nonatomic, assign) CGFloat videoZoomFactor;
