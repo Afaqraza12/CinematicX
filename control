@@ -1,9 +1,9 @@
 Package: com.afaq.cinematicx
 Name: CinematicX
 Version: 1.0.0
-Architecture: iphoneos-arm
+Architecture: iphoneos-arm64
 Description: Professional cinematic mode for iPhone X — real zoom, depth blur, subject tracking
 Author: Afaq Raza
 Maintainer: Afaq Raza
 Section: Tweaks
-Depends: mobilesubstrate (>= 0.9.5000), preferenceloader
+Depends: org.coolstar.ellekit

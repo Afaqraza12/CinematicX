@@ -22,13 +22,13 @@ jobs:
       run: |
         git clone https://github.com/theos/sdks.git ~/theos/sdks
 
-    - name: Build Tweak
+    - name: Build Tweak (arm64 rootless)
       run: |
         export THEOS=~/theos
         export PATH=$THEOS/bin:$PATH
-        make package FINALPACKAGE=1
+        make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
 
-    - name: Upload .deb Artifact
+    - name: Upload .deb
       uses: actions/upload-artifact@v4
       with:
         name: CinematicX-${{ github.sha }}.deb

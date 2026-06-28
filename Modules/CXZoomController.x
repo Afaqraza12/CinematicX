@@ -1,84 +1,67 @@
-// CXZoomController.x
-
 #import "../Headers/PLCameraController.h"
 #import <UIKit/UIKit.h>
 #import <AVFoundation/AVFoundation.h>
 
-// Zoom snap points — feel natural like native iOS
 static const CGFloat kZoom1x = 1.0f;
 static const CGFloat kZoom2x = 2.0f;
 static const CGFloat kZoom3x = 3.0f;
-static const CGFloat kZoomSnapThreshold = 0.3f; // snap within 0.3x of target
-
-// Smooth zoom animation duration
-static const NSTimeInterval kZoomAnimationDuration = 0.25;
+static const CGFloat kSnapThreshold = 0.3f;
+static const CGFloat kMaxZoom = 6.0f;
 
 @interface CXZoomController : NSObject
 + (instancetype)sharedController;
 - (void)setZoom:(CGFloat)factor onDevice:(AVCaptureDevice *)device animated:(BOOL)animated;
-- (CGFloat)snapToNearestLevel:(CGFloat)rawFactor;
-- (void)triggerHapticForZoomLevel:(CGFloat)level;
+- (CGFloat)snapToLevel:(CGFloat)raw;
 @end
 
 @implementation CXZoomController
 
 + (instancetype)sharedController {
-    static CXZoomController *instance;
-    static dispatch_once_t token;
-    dispatch_once(&token, ^{ instance = [self new]; });
-    return instance;
+    static CXZoomController *s;
+    static dispatch_once_t t;
+    dispatch_once(&t, ^{ s = [self new]; });
+    return s;
 }
 
-- (CGFloat)snapToNearestLevel:(CGFloat)rawFactor {
-    // Snap logic — feel like native camera
-    if (fabs(rawFactor - kZoom1x) < kZoomSnapThreshold) return kZoom1x;
-    if (fabs(rawFactor - kZoom2x) < kZoomSnapThreshold) return kZoom2x;
-    if (fabs(rawFactor - kZoom3x) < kZoomSnapThreshold) return kZoom3x;
-    return rawFactor; // no snap — free zoom
-}
-
-- (void)triggerHapticForZoomLevel:(CGFloat)level {
-    UIImpactFeedbackGenerator *haptic = [[UIImpactFeedbackGenerator alloc] 
-                                          initWithStyle:UIImpactFeedbackStyleLight];
-    [haptic prepare];
-    [haptic impactOccurred];
+- (CGFloat)snapToLevel:(CGFloat)raw {
+    if (fabs(raw - kZoom1x) < kSnapThreshold) return kZoom1x;
+    if (fabs(raw - kZoom2x) < kSnapThreshold) return kZoom2x;
+    if (fabs(raw - kZoom3x) < kSnapThreshold) return kZoom3x;
+    return raw;
 }
 
 - (void)setZoom:(CGFloat)factor onDevice:(AVCaptureDevice *)device animated:(BOOL)animated {
     if (!device) return;
-    
-    NSError *error;
-    if (![device lockForConfiguration:&error]) {
-        NSLog(@"[CinematicX] Failed to lock device: %@", error);
+    NSError *err;
+    if (![device lockForConfiguration:&err]) {
+        NSLog(@"[CinematicX] Zoom lock failed: %@", err);
         return;
     }
-    
-    // Clamp to device supported range
-    CGFloat maxZoom = MIN(device.activeFormat.videoMaxZoomFactor, 6.0f);
-    CGFloat clampedFactor = MAX(kZoom1x, MIN(factor, maxZoom));
-    
+    CGFloat maxZ = MIN(device.activeFormat.videoMaxZoomFactor, kMaxZoom);
+    CGFloat clamped = MAX(kZoom1x, MIN(factor, maxZ));
     if (animated) {
-        [device rampToVideoZoomFactor:clampedFactor withRate:8.0f];
+        [device rampToVideoZoomFactor:clamped withRate:8.0f];
     } else {
-        device.videoZoomFactor = clampedFactor;
+        device.videoZoomFactor = clamped;
     }
-    
     [device unlockForConfiguration];
-    NSLog(@"[CinematicX] Zoom set to %.1fx", clampedFactor);
+
+    // Haptic on snap points
+    if (fabs(clamped - kZoom1x) < 0.05 ||
+        fabs(clamped - kZoom2x) < 0.05 ||
+        fabs(clamped - kZoom3x) < 0.05) {
+        UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc]
+                                         initWithStyle:UIImpactFeedbackStyleLight];
+        [h impactOccurred];
+    }
+    NSLog(@"[CinematicX] Zoom → %.1fx", clamped);
 }
 
 @end
 
-// HOOK PLCameraController zoom
 %hook PLCameraController
-
 - (void)setVideoZoomFactor:(CGFloat)factor {
-    AVCaptureDevice *device = [self valueForKey:@"_videoCaptureDevice"];
-    [[CXZoomController sharedController] setZoom:factor onDevice:device animated:YES];
+    AVCaptureDevice *dev = [self valueForKey:@"_videoCaptureDevice"];
+    [[CXZoomController sharedController] setZoom:factor onDevice:dev animated:YES];
 }
-
-- (CGFloat)videoZoomFactor {
-    return %orig;
-}
-
 %end
