@@ -13,19 +13,14 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Install Theos
-      run: |
-        export THEOS=~/theos
-        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
-
-    - name: Download iOS SDKs
-      run: |
-        git clone https://github.com/theos/sdks.git ~/theos/sdks
+    - name: Setup Theos
+      uses: Randomblock1/theos-action@v1
+      with:
+        theos-sdks: 'https://github.com/theos/sdks'
+        theos-sdks-branch: 'master'
 
     - name: Build Tweak (arm64 rootless)
       run: |
-        export THEOS=~/theos
-        export PATH=$THEOS/bin:$PATH
         make package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless ARCHS=arm64
 
     - name: Upload .deb
