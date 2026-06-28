@@ -117,7 +117,10 @@
             // Spoof delegate callback to UI
             dispatch_async(dispatch_get_main_queue(), ^{
                 if ([self.delegate respondsToSelector:@selector(captureOutput:didStartRecordingToOutputFileAtURL:fromConnections:)]) {
-                    [self.delegate captureOutput:nil didStartRecordingToOutputFileAtURL:self.outputURL fromConnections:@[]];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+                    [self.delegate captureOutput:(AVCaptureFileOutput *)nil didStartRecordingToOutputFileAtURL:self.outputURL fromConnections:@[]];
+#pragma clang diagnostic pop
                 }
             });
         }
@@ -144,7 +147,10 @@
                 // Spoof delegate callback to UI
                 dispatch_async(dispatch_get_main_queue(), ^{
                     if ([self.delegate respondsToSelector:@selector(captureOutput:didFinishRecordingToOutputFileAtURL:fromConnections:error:)]) {
-                        [self.delegate captureOutput:nil didFinishRecordingToOutputFileAtURL:self.outputURL fromConnections:@[] error:error];
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
+                        [self.delegate captureOutput:(AVCaptureFileOutput *)nil didFinishRecordingToOutputFileAtURL:self.outputURL fromConnections:@[] error:error];
+#pragma clang diagnostic pop
                     }
                 });
             }];
