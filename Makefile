@@ -21,7 +21,9 @@ CinematicX_FILES = Tweak.x \
 
 CinematicX_CFLAGS = -fobjc-arc -O2 -Wall -arch arm64
 CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo
-CinematicX_PRIVATE_FRAMEWORKS = CoreCamera
+# NOTE: CoreCamera is NOT linked. PLCameraController/PLCameraView are hooked at runtime by
+# Logos/ElleKit, so no link-time private framework is needed — and the CI SDK has no
+# CoreCamera stub to link against (ld: framework 'CoreCamera' not found).
 
 include $(THEOS)/makefiles/tweak.mk
 
