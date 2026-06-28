@@ -50,9 +50,11 @@ static const CGFloat kMaxZoom = 6.0f;
     if (fabs(clamped - kZoom1x) < 0.05 ||
         fabs(clamped - kZoom2x) < 0.05 ||
         fabs(clamped - kZoom3x) < 0.05) {
-        UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc]
-                                         initWithStyle:UIImpactFeedbackStyleLight];
-        [h impactOccurred];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            UIImpactFeedbackGenerator *h = [[UIImpactFeedbackGenerator alloc]
+                                             initWithStyle:UIImpactFeedbackStyleLight];
+            [h impactOccurred];
+        });
     }
     NSLog(@"[CinematicX] Zoom → %.1fx", clamped);
 }
