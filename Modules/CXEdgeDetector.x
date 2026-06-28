@@ -46,8 +46,8 @@
     CVPixelBufferRetain(pixelBuffer);
     dispatch_async(self.segmentationQueue, ^{
         VNGeneratePersonSegmentationRequest *request = [[VNGeneratePersonSegmentationRequest alloc] init];
-        // Accurate mode uses the A11 Neural Engine for highly detailed hair/edge cutouts
-        request.qualityLevel = VNGeneratePersonSegmentationRequestQualityLevelAccurate;
+        // Use Fast mode because the A11 Neural Engine (iPhone X) often fails on Accurate
+        request.qualityLevel = VNGeneratePersonSegmentationRequestQualityLevelFast;
         request.outputPixelFormat = kCVPixelFormatType_OneComponent32Float;
 
         NSError *error = nil;

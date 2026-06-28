@@ -23,6 +23,27 @@ AVCaptureDevice *gActiveDevice = nil;
     return YES;
 }
 
+// Provide safe simulated aperture bounds so the UI doesn't crash when tapped!
+- (double)minimumCinematicVideoSimulatedAperture {
+    return 2.0;
+}
+
+- (double)maximumCinematicVideoSimulatedAperture {
+    return 16.0;
+}
+
+- (double)defaultCinematicVideoSimulatedAperture {
+    return 2.8;
+}
+
+- (double)minimumDepthEffectAperture {
+    return 1.4;
+}
+
+- (double)maximumDepthEffectAperture {
+    return 16.0;
+}
+
 %end
 
 // Monitor mode changes in the Viewfinder to sync our gCinematicEnabled state
