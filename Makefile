@@ -17,7 +17,7 @@ CinematicX_FILES = Tweak.x \
                    Modules/CXBokehRenderer.x \
                    Modules/CXSubjectTracker.x \
                    Modules/CXRackFocus.x \
-                   Modules/CXOverlayUI.x
+                   Modules/CXNativeUI.x
 
 CinematicX_CFLAGS = -fobjc-arc -O2 -Wall -arch arm64
 CinematicX_FRAMEWORKS = AVFoundation CoreImage Vision UIKit CoreMotion Metal MetalKit CoreVideo
