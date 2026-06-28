@@ -129,9 +129,9 @@ extern CGFloat gBlurIntensity;
             CGFloat scaleX = self.metalView.drawableSize.width / resultImage.extent.size.width;
             CGFloat scaleY = self.metalView.drawableSize.height / resultImage.extent.size.height;
             CGFloat scale = MAX(scaleX, scaleY);
-            resultImage = [resultImage imageByApplyingTransform:CGAffineTransformMakeScale(scale, scale)];
+            CIImage *scaledImage = [resultImage imageByApplyingTransform:CGAffineTransformMakeScale(scale, scale)];
             
-            [self.ciContext render:resultImage toMTLTexture:drawable.texture commandBuffer:commandBuffer bounds:resultImage.extent colorSpace:CGColorSpaceCreateDeviceRGB()];
+            [self.ciContext render:scaledImage toMTLTexture:drawable.texture commandBuffer:commandBuffer bounds:scaledImage.extent colorSpace:CGColorSpaceCreateDeviceRGB()];
             [commandBuffer presentDrawable:drawable];
             [commandBuffer commit];
         }
