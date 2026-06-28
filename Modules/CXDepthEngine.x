@@ -30,6 +30,12 @@
 - (void)attachToSession:(AVCaptureSession *)session {
     if (!session) return;
     
+    // Safety check 0: Exclude Photo presets to prevent Portrait mode crashes
+    if ([session.sessionPreset isEqualToString:AVCaptureSessionPresetPhoto]) {
+        NSLog(@"[CinematicX] Session is a photo preset. Skipping depth attachment.");
+        return;
+    }
+    
     // Safety check 1: Don't add if one already exists
     for (AVCaptureOutput *output in session.outputs) {
         if ([output isKindOfClass:[AVCaptureDepthDataOutput class]]) {
