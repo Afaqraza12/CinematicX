@@ -85,4 +85,12 @@ AVCaptureDevice *gActiveDevice = nil;
     return mappedAperture;
 }
 
+- (float)minCinematicVideoSimulatedAperture {
+    return 2.0f;
+}
+
+- (float)maxCinematicVideoSimulatedAperture {
+    return 16.0f;
+}
+
 %end

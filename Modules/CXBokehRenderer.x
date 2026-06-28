@@ -120,9 +120,13 @@ static void CXSetIfSupported(CIFilter *filter, id value, NSString *key) {
 
     if (!blurredBackground) return inputImage;
 
+    CGFloat scaleX = inputImage.extent.size.width / maskImage.extent.size.width;
+    CGFloat scaleY = inputImage.extent.size.height / maskImage.extent.size.height;
+    CIImage *scaledMask = [maskImage imageByApplyingTransform:CGAffineTransformMakeScale(scaleX, scaleY)];
+
     [self.blendFilter setValue:inputImage forKey:kCIInputImageKey];
     [self.blendFilter setValue:blurredBackground forKey:kCIInputBackgroundImageKey];
-    [self.blendFilter setValue:maskImage forKey:kCIInputMaskImageKey];
+    [self.blendFilter setValue:scaledMask forKey:kCIInputMaskImageKey];
 
     return self.blendFilter.outputImage;
 }
