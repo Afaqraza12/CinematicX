@@ -6,4 +6,4 @@ Description: Professional cinematic mode for iPhone X — real zoom, depth blur,
 Author: Afaq Raza
 Maintainer: Afaq Raza
 Section: Tweaks
-Depends: org.coolstar.ellekit, preferenceloader
+Depends: mobilesubstrate, preferenceloader
