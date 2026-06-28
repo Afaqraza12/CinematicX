@@ -1,0 +1,36 @@
+name: Build CinematicX
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Theos
+      run: |
+        export THEOS=~/theos
+        bash -c "$(curl -fsSL https://raw.githubusercontent.com/theos/theos/master/bin/install-theos)"
+
+    - name: Download iOS 16.5 SDK
+      run: |
+        curl -L "https://github.com/theos/sdks/releases/download/latest/iPhoneOS16.5.sdk.tar.xz" | tar -xJ -C ~/theos/sdks
+
+    - name: Build Tweak
+      run: |
+        export THEOS=~/theos
+        export PATH=$THEOS/bin:$PATH
+        make package FINALPACKAGE=1
+
+    - name: Upload .deb Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: CinematicX-${{ github.sha }}.deb
+        path: packages/*.deb
+        retention-days: 30
